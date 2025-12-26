@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import joblib
 
 # --------------------------------------------------
 # Page Config
@@ -10,21 +9,11 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown(
-    """
-    <h1 style='text-align:center;color:#0E4C92;'>
-    ⚡ NSC – EESP Analysis & Prediction Dashboard
-    </h1>
-    <p style='text-align:center;color:gray;'>
-    Real utility data • Analytics • ML-based future planning
-    </p>
-    <hr>
-    """,
-    unsafe_allow_html=True
-)
+st.title("⚡ NSC – EESP Analysis & Prediction Dashboard")
+st.caption("Real utility data • Analytics • ML-based future planning")
 
 # --------------------------------------------------
-# Load data from CSV (Cloud-safe)
+# Load Data (Cloud-safe)
 # --------------------------------------------------
 @st.cache_data
 def load_data():
@@ -36,13 +25,6 @@ def load_data():
 
 df = load_data()
 st.success("Data loaded successfully ✅")
-
-# --------------------------------------------------
-# Dropdown values
-# --------------------------------------------------
-sub_divs = sorted(df["SUB_DIV_ID"].dropna().unique().tolist())
-conn_types = sorted(df["CONN_TYPE"].dropna().unique().tolist())
-phases = sorted(df["APPPHASE"].dropna().unique().tolist())
 
 # --------------------------------------------------
 # Dataset Overview
@@ -58,76 +40,71 @@ with st.expander("🔍 View Sample Data"):
     st.dataframe(df.head(30))
 
 # --------------------------------------------------
-# Future Demand Prediction Section
+# Navigation Info
 # --------------------------------------------------
-st.header("🔮 Future Demand Prediction")
+st.info(
+    "➡️ Go to **Model Accuracy** page from the left sidebar "
+    "to view detailed ML performance (MAE, R², graphs)."
+)
+
+# --------------------------------------------------
+# Load Estimation – Demo / Safe Mode
+# --------------------------------------------------
+st.header(" Load Estimation ")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    ml_sub = st.selectbox("Select Sub-Division", sub_divs)
+    sub_div = st.selectbox(
+        "Select Sub-Division",
+        sorted(df["SUB_DIV_ID"].dropna().unique())
+    )
 
 with col2:
-    ml_cat = st.selectbox("Select Consumer Category", conn_types)
+    consumer = st.selectbox(
+        "Select Consumer Type",
+        sorted(df["CONN_TYPE"].dropna().unique())
+    )
 
 with col3:
-    ml_phase = st.selectbox("Select Current Phase", phases)
-
-col4, col5 = st.columns(2)
-
-with col4:
-    month = st.selectbox(
-        "Select Month",
-        list(range(1, 13)),
-        format_func=lambda x: pd.to_datetime(str(x), format="%m").strftime("%B")
+    phase = st.selectbox(
+        "Select Phase",
+        sorted(df["APPPHASE"].dropna().unique())
     )
 
-with col5:
-    input_load = st.number_input(
-        "Expected Load (kW)",
-        min_value=0.0,
-        step=1.0
-    )
+user_load = st.number_input(
+    "Expected Load (kW)",
+    min_value=0.0,
+    step=1.0
+)
 
 # --------------------------------------------------
-# Prediction Logic
+# Prediction Logic (Temporary – Demo)
 # --------------------------------------------------
-if st.button("🚀 Predict Future Demand"):
+if st.button(" Predict Load"):
 
-    # Use correct column instead of KW
     base_load = df["SANC_LOAD"].fillna(0).mean()
-    predicted_load = base_load + (input_load * 0.3)
+    predicted_load = base_load + (user_load * 0.2)
 
-    # Rule-based interpretation
+    # Interpretation layer (important for project)
     if predicted_load < 50:
         hotspot = "Low Demand Zone"
         required_phase = "Single Phase"
-        capacity = round(predicted_load * 1.1, 2)
     elif predicted_load < 100:
         hotspot = "Medium Demand Zone"
         required_phase = "Three Phase (Recommended)"
-        capacity = round(predicted_load * 1.2, 2)
     else:
         hotspot = "High Demand Zone"
         required_phase = "Three Phase (Mandatory)"
-        capacity = round(predicted_load * 1.3, 2)
 
-    # Output
-    st.success("✅ Future Demand Prediction Completed")
+    st.success("✅ Load Estimation Completed")
 
     st.markdown(f"""
-    ### 📌 Prediction Results
-    🔥 **Future Request Hotspot:** {hotspot}  
-    ⚡ **Predicted Load (Estimation):** {predicted_load:.2f} kW  
-    🔌 **Required Phase:** {required_phase}  
-    🏗️ **Recommended Capacity:** {capacity} kW  
-    📍 **Sub-Division:** {ml_sub}  
-    👥 **Consumer Type:** {ml_cat}  
-    📅 **Month:** {pd.to_datetime(str(month), format='%m').strftime('%B')}  
+    ###  Prediction Results
+     **Demand Hotspot:** {hotspot}  
+     **Estimated Load:** {predicted_load:.2f} kW  
+     **Required Phase:** {required_phase}  
+     **Sub-Division:** {sub_div}  
+     **Consumer Type:** {consumer}
     """)
 
-# --------------------------------------------------
-# Footer
-# --------------------------------------------------
-st.markdown("---")
-st.caption("Final Year Project | NSC – EESP | Streamlit • ML • Data Analytics")
